@@ -1,6 +1,6 @@
 # Geeko AI Chat
 
-A Cockpit module for AI chat interface built with React and TypeScript.
+A Cockpit module for AI chat interface built with React and TypeScript that integrates with the `mcphost` application.
 
 ## Development dependencies
 
@@ -63,8 +63,20 @@ Run `make check` to build and test the application.
 
 ## Features
 
-- Chat interface with message history
-- Auto-scrolling message area
-- Enter key support for sending messages
-- Dark/light theme support
-- Responsive layout using PatternFly components
+- **AI Chat Integration**: Communicates with `mcphost` application using `--quiet`, `--stream`, and `-p` flags
+- **Conversation History**: Maintains context with USER:/BOT: prefixed messages sent to mcphost
+- **Auto-scrolling Chat**: Message area automatically scrolls to show latest responses
+- **Command History**: Navigate previous inputs with arrow keys (↑/↓) like bash history
+- **History Management**: 
+  - "Show History" button displays conversation history with size indicator
+  - "Clear History" button resets conversation context
+- **Streaming Responses**: Real-time display of mcphost output as it streams
+- **Busy State**: Send button shows loading state and blocks input during processing
+- **Auto-focus**: Input field automatically receives focus after events
+- **Dark/Light Theme**: Full support for Cockpit's theme system
+- **Responsive Layout**: Uses PatternFly components for consistent UI
+
+## Requirements
+
+- `mcphost` application must be available in the system PATH
+- The application spawns: `mcphost --quiet --stream -p <conversation_history>`
