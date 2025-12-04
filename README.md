@@ -1,5 +1,7 @@
 # Geeko AI Chat
 
+![Cockpit Chat](cockpit-chat.png)
+
 A Cockpit module for AI chat interface built with React and TypeScript that integrates with the `mcphost` application.
 
 ## Development dependencies

@@ -1,5 +1,5 @@
 {
-  "name": "starter-kit",
+  "name": "chat",
   "description": "Scaffolding for a cockpit module",
   "type": "module",
   "main": "index.js",

@@ -22,6 +22,7 @@ export const Application = () => {
     const [selectedTool, setSelectedTool] = useState(null);
     const [selectedToolName, setSelectedToolName] = useState('');
     const [configError, setConfigError] = useState('');
+    const [currentProcess, setCurrentProcess] = useState(null);
 
     const outputRef = useRef(null);
     const inputRef = useRef(null);
@@ -47,13 +48,32 @@ export const Application = () => {
                     if (parts.length < 3) {
                         return null;
                     }
-                    const [name, label, command, ...argParts] = parts;
+                    const [name, label, command, ...rest] = parts;
+                    
+                    // Find environment section (starts with ENV:)
+                    let envVars = {};
+                    let argParts = rest;
+                    const envIndex = rest.findIndex(part => part.trim().startsWith('ENV:'));
+                    if (envIndex !== -1) {
+                        const envPart = rest[envIndex].trim().substring(4); // Remove 'ENV:'
+                        if (envPart) {
+                            envPart.split(',').forEach(pair => {
+                                const [key, value] = pair.split('=', 2);
+                                if (key && value) {
+                                    envVars[key.trim()] = value.trim();
+                                }
+                            });
+                        }
+                        argParts = rest.slice(0, envIndex);
+                    }
+                    
                     const allArgs = argParts.join(' ').trim();
                     return {
                         name: name.trim(),
                         label: label.trim(),
                         command: command.trim(),
-                        args: allArgs ? allArgs.split(/\s+/) : []
+                        args: allArgs ? allArgs.split(/\s+/) : [],
+                        env: envVars
                     };
                 }).filter(tool => tool !== null);
                 
@@ -97,28 +117,70 @@ export const Application = () => {
         
         const historyUserMessage = `USER: ${input}\n`;
         const fullHistory = history + historyUserMessage;
-        const command = [selectedTool.command, ...selectedTool.args, fullHistory];
-        console.log('Executing command:', command);
-        const proc = cockpit.spawn(command, { err: 'message' });
+        const command = [selectedTool.command, ...selectedTool.args, history + input];
+        const options = { err: 'message' };
+        if (selectedTool.env && Object.keys(selectedTool.env).length > 0) {
+            options.environ = selectedTool.env;
+        }
+        console.log('Executing command:', command, 'with env:', selectedTool.env);
+        let proc;
+        try {
+            proc = cockpit.spawn(command, options);
+            console.log('Process spawned successfully');
+            setCurrentProcess(proc);
+        } catch (spawnError) {
+            console.error('Failed to spawn process:', spawnError);
+            setOutput(prev => prev + `Spawn Error: ${spawnError}\n\n`);
+            setIsBusy(false);
+            inputRef.current?.focus();
+            return;
+        }
         
         let responseData = '';
+        let hasOutput = false;
+        
+        // Timeout after 30 seconds if no response
+        const timeout = setTimeout(() => {
+            console.log('Process timeout - no response after 30s');
+            if (proc) {
+                proc.close();
+                setOutput(prev => prev + '\n[Timeout - no response after 30 seconds]\n\n');
+                setIsBusy(false);
+                setCurrentProcess(null);
+                inputRef.current?.focus();
+            }
+        }, 30000);
+        
         proc.stream((data) => {
+            console.log('Command output:', data);
+            hasOutput = true;
+            clearTimeout(timeout);
             responseData += data;
             setOutput(prev => prev + data);
         });
         
         proc.done(() => {
+            console.log('Process completed. Has output:', hasOutput, 'Response length:', responseData.length);
+            clearTimeout(timeout);
+            if (!hasOutput && responseData.length === 0) {
+                setOutput(prev => prev + '[No output from command]\n\n');
+            }
             setHistory(fullHistory + `BOT: ${responseData}\n\n`);
             setOutput(prev => prev + '\n\n');
             setIsBusy(false);
+            setCurrentProcess(null);
             inputRef.current?.focus();
         });
         
         proc.fail((error) => {
+            console.log('Process failed:', error);
+            clearTimeout(timeout);
             setOutput(prev => prev + `Error: ${error}\n\n`);
             setIsBusy(false);
+            setCurrentProcess(null);
             inputRef.current?.focus();
         });
+
         
         setInput('');
         setTimeout(() => inputRef.current?.focus(), 0);
@@ -132,6 +194,16 @@ export const Application = () => {
     const clearHistory = () => {
         setHistory('');
         inputRef.current?.focus();
+    };
+
+    const stopProcess = () => {
+        if (currentProcess) {
+            currentProcess.close();
+            setOutput(prev => prev + '\n[Process stopped]\n\n');
+            setIsBusy(false);
+            setCurrentProcess(null);
+            inputRef.current?.focus();
+        }
     };
 
     const formatSize = (bytes) => {
@@ -175,6 +247,9 @@ export const Application = () => {
                         </Button>
                         <Button variant="secondary" onClick={clearHistory}>
                             {_("Clear History")}
+                        </Button>
+                        <Button variant="danger" onClick={stopProcess} isDisabled={!isBusy}>
+                            {_("Stop")}
                         </Button>
                     </div>
                 </div>
@@ -223,7 +298,13 @@ export const Application = () => {
                         readOnly={isBusy}
                         style={{ flex: 1 }}
                     />
-                    <Button onClick={sendMessage} isDisabled={!input.trim() || isBusy || !selectedTool} isLoading={isBusy}>
+                    <Button 
+                        onClick={sendMessage} 
+                        isDisabled={!input.trim() || isBusy || !selectedTool} 
+                        isLoading={isBusy}
+                        variant={input.trim() && !isBusy && selectedTool ? "primary" : "secondary"}
+                        style={input.trim() && !isBusy && selectedTool ? { backgroundColor: '#28a745', borderColor: '#28a745' } : {}}
+                    >
                         {isBusy ? _("Sending...") : _("Send")}
                     </Button>
                 </div>
