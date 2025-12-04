@@ -4,9 +4,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version: starter-kit 1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-03-09 16:09+0100\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"POT-Creation-Date: 2025-12-04 12:00+0000\n"
+"PO-Revision-Date: 2025-12-04 HO:MI+ZONE\n"
+"Last-Translator: <rsimai@suse.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
@@ -14,26 +14,24 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1\n"
 
-#: src/index.html:20
-msgid "Cockpit Starter Kit"
-msgstr "Cockpit Bausatz"
+msgid "Show History"
+msgstr "Zeige Historie"
 
-#: src/app.jsx:43
-msgid "Running on $0"
-msgstr "L채uft auf $0"
+msgid "Clear History"
+msgstr "L홹che Historie"
 
-#: org.cockpit-project.starter-kit.metainfo.xml:6
-msgid "Scaffolding for a cockpit module"
-msgstr "Ger체st f체r ein Cockpit-Modul"
+msgid "Chat messages will appear here..."
+msgstr "Chat Nachrichten erscheinen hier..."
 
-#: org.cockpit-project.starter-kit.metainfo.xml:8
-msgid "Scaffolding for a cockpit module."
-msgstr "Ger체st f체r ein Cockpit-Modul."
+msgid "Enter message..."
+msgstr "Nachricht eingeben"
 
-#: src/manifest.json:0 org.cockpit-project.starter-kit.metainfo.xml:5
-msgid "Starter Kit"
-msgstr "Bausatz"
+msgid "Sending..."
+msgstr "Sende"
 
-#: src/app.jsx:29
-msgid "Unknown"
-msgstr "Unbekannt"
+msgid "Send"
+msgstr "Senden"
+
+msgid "Geeko AI"
+msgstr "Geeko AI"
+
