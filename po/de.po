@@ -1,37 +1,42 @@
-# starter-kit German translations
-#, fuzzy
+# cockpit-chat German translations
 msgid ""
 msgstr ""
-"Project-Id-Version: starter-kit 1.0\n"
+"Project-Id-Version: cockpit-chat\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-04 12:00+0000\n"
-"PO-Revision-Date: 2025-12-04 HO:MI+ZONE\n"
+"POT-Creation-Date: 2024-12-04 15:46+0000\n"
+"PO-Revision-Date: 2024-12-04 15:46+0000\n"
 "Last-Translator: <rsimai@suse.com>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language-Team: German\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=n != 1\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
 
+#: src/app.tsx:75
 msgid "Show History"
 msgstr "Zeige Historie"
 
+#: src/app.tsx:78
 msgid "Clear History"
-msgstr "LÃsche Historie"
+msgstr "LÃ¶sche Historie"
 
+#: src/app.tsx:87
 msgid "Chat messages will appear here..."
 msgstr "Chat Nachrichten erscheinen hier..."
 
+#: src/app.tsx:94
 msgid "Enter message..."
 msgstr "Nachricht eingeben"
 
+#: src/app.tsx:118
 msgid "Sending..."
 msgstr "Sende"
 
+#: src/app.tsx:118
 msgid "Send"
 msgstr "Senden"
 
+#: src/manifest.json:6
 msgid "Geeko AI"
 msgstr "Geeko AI"
-
