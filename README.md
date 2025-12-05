@@ -65,20 +65,22 @@ Run `make check` to build and test the application.
 
 ## Features
 
-- **AI Chat Integration**: Communicates with `mcphost` application using `--quiet`, `--stream`, and `-p` flags
-- **Conversation History**: Maintains context with USER:/BOT: prefixed messages sent to mcphost
+- **AI Chat Integration**: Communicates with `mcphost` or `goose` application. They need to be configured for the user
+- **Conversation History**: Maintains context with USER:/BOT: prefixed messages sent to chat application
 - **Auto-scrolling Chat**: Message area automatically scrolls to show latest responses
 - **Command History**: Navigate previous inputs with arrow keys (↑/↓) like bash history
 - **History Management**: 
   - "Show History" button displays conversation history with size indicator
   - "Clear History" button resets conversation context
-- **Streaming Responses**: Real-time display of mcphost output as it streams
 - **Busy State**: Send button shows loading state and blocks input during processing
-- **Auto-focus**: Input field automatically receives focus after events
 - **Dark/Light Theme**: Full support for Cockpit's theme system
 - **Responsive Layout**: Uses PatternFly components for consistent UI
 
+## What's missing
+- **Human in the Loop**: interactive approvals don't work, the chat application needs to be set to always allow tool usage
+- **Shell Variables**: there should be shell variables to set parameters to applications such as goose
+
 ## Requirements
 
-- `mcphost` application must be available in the system PATH
-- The application spawns: `mcphost --quiet --stream -p <conversation_history>`
+- `mcphost` or `goose` application must be available in the system PATH
+- The application spawns: `application parameters <conversation_history_text>`
