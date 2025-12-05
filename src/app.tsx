@@ -13,7 +13,7 @@ const _ = cockpit.gettext;
 
 export const Application = () => {
     const [input, setInput] = useState('');
-    const [output, setOutput] = useState('');
+    const [messages, setMessages] = useState([]);
     const [history, setHistory] = useState('');
     const [isBusy, setIsBusy] = useState(false);
     const [commandHistory, setCommandHistory] = useState([]);
@@ -23,8 +23,9 @@ export const Application = () => {
     const [selectedToolName, setSelectedToolName] = useState('');
     const [configError, setConfigError] = useState('');
     const [currentProcess, setCurrentProcess] = useState(null);
+    const [currentResponse, setCurrentResponse] = useState('');
 
-    const outputRef = useRef(null);
+    const messagesRef = useRef(null);
     const inputRef = useRef(null);
 
     useEffect(() => {
@@ -91,10 +92,10 @@ export const Application = () => {
     }, []);
 
     useEffect(() => {
-        if (outputRef.current) {
-            outputRef.current.scrollTop = outputRef.current.scrollHeight;
+        if (messagesRef.current) {
+            messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
         }
-    }, [output]);
+    }, [messages, currentResponse]);
 
     useEffect(() => {
         inputRef.current?.focus();
@@ -112,8 +113,8 @@ export const Application = () => {
         setCommandHistory(prev => [...prev, input]);
         setHistoryIndex(-1);
         setIsBusy(true);
-        const userMessage = `> ${input}\n`;
-        setOutput(prev => prev + userMessage);
+        setMessages(prev => [...prev, { type: 'user', content: input }]);
+        setCurrentResponse('');
         
         const historyUserMessage = `USER: ${input}\n`;
         const fullHistory = history + historyUserMessage;
@@ -130,7 +131,7 @@ export const Application = () => {
             setCurrentProcess(proc);
         } catch (spawnError) {
             console.error('Failed to spawn process:', spawnError);
-            setOutput(prev => prev + `Spawn Error: ${spawnError}\n\n`);
+            setMessages(prev => [...prev, { type: 'error', content: `Spawn Error: ${spawnError}` }]);
             setIsBusy(false);
             inputRef.current?.focus();
             return;
@@ -144,7 +145,8 @@ export const Application = () => {
             console.log('Process timeout - no response after 30s');
             if (proc) {
                 proc.close();
-                setOutput(prev => prev + '\n[Timeout - no response after 30 seconds]\n\n');
+                setMessages(prev => [...prev, { type: 'error', content: 'Timeout - no response after 30 seconds' }]);
+                setCurrentResponse('');
                 setIsBusy(false);
                 setCurrentProcess(null);
                 inputRef.current?.focus();
@@ -156,17 +158,19 @@ export const Application = () => {
             hasOutput = true;
             clearTimeout(timeout);
             responseData += data;
-            setOutput(prev => prev + data);
+            setCurrentResponse(responseData);
         });
         
         proc.done(() => {
             console.log('Process completed. Has output:', hasOutput, 'Response length:', responseData.length);
             clearTimeout(timeout);
             if (!hasOutput && responseData.length === 0) {
-                setOutput(prev => prev + '[No output from command]\n\n');
+                setMessages(prev => [...prev, { type: 'error', content: 'No output from command' }]);
+            } else {
+                setMessages(prev => [...prev, { type: 'bot', content: responseData }]);
             }
             setHistory(fullHistory + `BOT: ${responseData}\n\n`);
-            setOutput(prev => prev + '\n\n');
+            setCurrentResponse('');
             setIsBusy(false);
             setCurrentProcess(null);
             inputRef.current?.focus();
@@ -175,7 +179,8 @@ export const Application = () => {
         proc.fail((error) => {
             console.log('Process failed:', error);
             clearTimeout(timeout);
-            setOutput(prev => prev + `Error: ${error}\n\n`);
+            setMessages(prev => [...prev, { type: 'error', content: `Error: ${error}` }]);
+            setCurrentResponse('');
             setIsBusy(false);
             setCurrentProcess(null);
             inputRef.current?.focus();
@@ -187,19 +192,22 @@ export const Application = () => {
     };
 
     const showHistory = () => {
-        setOutput(prev => prev + '=== HISTORY ===\n' + history + '=== END HISTORY ===\n\n');
+        setMessages(prev => [...prev, { type: 'system', content: `=== HISTORY ===\n${history}=== END HISTORY ===` }]);
         inputRef.current?.focus();
     };
 
     const clearHistory = () => {
         setHistory('');
+        setMessages([]);
+        setCurrentResponse('');
         inputRef.current?.focus();
     };
 
     const stopProcess = () => {
         if (currentProcess) {
             currentProcess.close();
-            setOutput(prev => prev + '\n[Process stopped]\n\n');
+            setMessages(prev => [...prev, { type: 'error', content: 'Process stopped' }]);
+            setCurrentResponse('');
             setIsBusy(false);
             setCurrentProcess(null);
             inputRef.current?.focus();
@@ -255,13 +263,70 @@ export const Application = () => {
                 </div>
             </StackItem>
             <StackItem isFilled>
-                <TextArea
-                    ref={outputRef}
-                    value={output}
-                    readOnly
-                    style={{ height: 'calc(100vh - 200px)', minHeight: '400px' }}
-                    placeholder={_("Chat messages will appear here...")}
-                />
+                <div 
+                    ref={messagesRef}
+                    style={{ 
+                        height: 'calc(100vh - 200px)', 
+                        minHeight: '400px',
+                        overflowY: 'auto',
+                        padding: '16px',
+                        backgroundColor: 'var(--pf-v6-global--BackgroundColor--100)',
+                        border: '1px solid var(--pf-v6-global--BorderColor--100)',
+                        borderRadius: '8px'
+                    }}
+                >
+                    {messages.length === 0 && !currentResponse && (
+                        <div style={{ color: 'var(--pf-v6-global--Color--200)', textAlign: 'center', marginTop: '50px' }}>
+                            {_("Chat messages will appear here...")}
+                        </div>
+                    )}
+                    {messages.map((msg, index) => (
+                        <div key={index} style={{ 
+                            display: 'flex', 
+                            justifyContent: msg.type === 'user' ? 'flex-end' : 'flex-start',
+                            marginBottom: '12px'
+                        }}>
+                            <div style={{
+                                maxWidth: '70%',
+                                padding: '12px 16px',
+                                borderRadius: '18px',
+                                border: '2px solid rgba(0, 0, 0, 0.2)',
+                                backgroundColor: msg.type === 'user' 
+                                    ? '#0066cc' 
+                                    : msg.type === 'error' 
+                                    ? 'var(--pf-v6-global--danger-color--100)'
+                                    : msg.type === 'system'
+                                    ? 'var(--pf-v6-global--info-color--100)'
+                                    : 'light-dark(#e0e0e0, #404040)',
+                                color: msg.type === 'user' ? 'white' : 'var(--pf-v6-global--Color--100)',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word'
+                            }}>
+                                {msg.content}
+                            </div>
+                        </div>
+                    ))}
+                    {currentResponse && (
+                        <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'flex-start',
+                            marginBottom: '12px'
+                        }}>
+                            <div style={{
+                                maxWidth: '70%',
+                                padding: '12px 16px',
+                                borderRadius: '18px',
+                                border: '2px solid rgba(0, 0, 0, 0.2)',
+                                backgroundColor: 'light-dark(#e0e0e0, #404040)',
+                                color: 'var(--pf-v6-global--Color--100)',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word'
+                            }}>
+                                {currentResponse}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </StackItem>
             <StackItem>
                 <div style={{ display: 'flex', gap: '8px' }}>
