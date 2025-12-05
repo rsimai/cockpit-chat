@@ -24,6 +24,7 @@ export const Application = () => {
     const [configError, setConfigError] = useState('');
     const [currentProcess, setCurrentProcess] = useState(null);
     const [currentResponse, setCurrentResponse] = useState('');
+    const [markdownEnabled, setMarkdownEnabled] = useState(true);
 
     const messagesRef = useRef(null);
     const inputRef = useRef(null);
@@ -118,12 +119,25 @@ export const Application = () => {
         
         const historyUserMessage = `USER: ${input}\n`;
         const fullHistory = history + historyUserMessage;
-        const command = [selectedTool.command, ...selectedTool.args, history + input];
-        const options = { err: 'message' };
+        let command, options;
         if (selectedTool.env && Object.keys(selectedTool.env).length > 0) {
-            options.environ = selectedTool.env;
+            const exports = Object.entries(selectedTool.env)
+                .map(([key, value]) => `export ${key}="${value}"`)
+                .join('; ');
+            const shellScript = `${exports}; ${selectedTool.command} ${selectedTool.args.join(' ')} "${(history + input).replace(/"/g, '\\"')}"`;
+            command = ['/bin/sh', '-c', shellScript];
+            options = { err: 'message' };
+        } else {
+            command = [selectedTool.command, ...selectedTool.args, history + input];
+            options = { err: 'message' };
         }
-        console.log('Executing command:', command, 'with env:', selectedTool.env);
+        console.log('Executing command:', command);
+        console.log('Environment variables:', selectedTool.env);
+        if (selectedTool.env) {
+            Object.entries(selectedTool.env).forEach(([key, value]) => {
+                console.log(`ENV: ${key}=${value}`);
+            });
+        }
         let proc;
         try {
             proc = cockpit.spawn(command, options);
@@ -222,8 +236,37 @@ export const Application = () => {
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
+    const formatMarkdown = (text) => {
+        if (!markdownEnabled) return text;
+        
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 3px;">$1</code>')
+            .replace(/```([\s\S]*?)```/g, '<pre style="background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px; overflow-x: auto;"><code>$1</code></pre>')
+            .replace(/^#{3} (.*$)/gm, '<h3 style="margin: 8px 0 4px 0;">$1</h3>')
+            .replace(/^#{2} (.*$)/gm, '<h2 style="margin: 12px 0 6px 0;">$1</h2>')
+            .replace(/^# (.*$)/gm, '<h1 style="margin: 16px 0 8px 0;">$1</h1>')
+            .replace(/^- (.*$)/gm, '• $1')
+            .replace(/^\d+\. (.*$)/gm, (match, p1, offset, string) => {
+                const linesBefore = string.substring(0, offset).split('\n');
+                const currentLineIndex = linesBefore.length - 1;
+                const listItems = linesBefore.filter(line => /^\d+\. /.test(line));
+                return `${listItems.length + 1}. ${p1}`;
+            });
+    };
+
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => {
+            console.log('Copied to clipboard');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
+    };
+
     return (
-        <Stack hasGutter>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', margin: 0, padding: '8px', boxSizing: 'border-box' }}>
+        <Stack hasGutter style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <StackItem>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -252,6 +295,12 @@ export const Application = () => {
                         )}
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <Button 
+                            variant={markdownEnabled ? "primary" : "secondary"}
+                            onClick={() => setMarkdownEnabled(!markdownEnabled)}
+                        >
+                            {markdownEnabled ? _("Markdown On") : _("Markdown Off")}
+                        </Button>
                         <Button variant="secondary" onClick={showHistory}>
                             {_("Show History")}: {formatSize(new TextEncoder().encode(history).length)}
                         </Button>
@@ -264,12 +313,11 @@ export const Application = () => {
                     </div>
                 </div>
             </StackItem>
-            <StackItem isFilled>
+            <StackItem isFilled style={{ minHeight: '0', overflow: 'hidden' }}>
                 <div 
                     ref={messagesRef}
                     style={{ 
-                        height: 'calc(100vh - 200px)', 
-                        minHeight: '400px',
+                        height: '100%',
                         overflowY: 'auto',
                         padding: '16px',
                         backgroundColor: 'var(--pf-v6-global--BackgroundColor--100)',
@@ -286,7 +334,9 @@ export const Application = () => {
                         <div key={index} style={{ 
                             display: 'flex', 
                             justifyContent: msg.type === 'user' ? 'flex-end' : 'flex-start',
-                            marginBottom: '12px'
+                            alignItems: 'flex-end',
+                            marginBottom: '12px',
+                            gap: '8px'
                         }}>
                             <div style={{
                                 maxWidth: '70%',
@@ -304,15 +354,38 @@ export const Application = () => {
                                 whiteSpace: 'pre-wrap',
                                 wordBreak: 'break-word'
                             }}>
-                                {msg.content}
+                                {msg.type === 'bot' ? (
+                                    <div dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
+                                ) : (
+                                    msg.content
+                                )}
                             </div>
+                            {msg.type === 'bot' && (
+                                <button
+                                    onClick={() => copyToClipboard(msg.content)}
+                                    style={{
+                                        background: 'rgba(0,0,0,0.1)',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        marginBottom: '4px'
+                                    }}
+                                    title="Copy to clipboard"
+                                >
+                                    📋
+                                </button>
+                            )}
                         </div>
                     ))}
                     {currentResponse && (
                         <div style={{ 
                             display: 'flex', 
                             justifyContent: 'flex-start',
-                            marginBottom: '12px'
+                            alignItems: 'flex-end',
+                            marginBottom: '12px',
+                            gap: '8px'
                         }}>
                             <div style={{
                                 maxWidth: '70%',
@@ -324,8 +397,23 @@ export const Application = () => {
                                 whiteSpace: 'pre-wrap',
                                 wordBreak: 'break-word'
                             }}>
-                                {currentResponse}
+                                <div dangerouslySetInnerHTML={{ __html: formatMarkdown(currentResponse) }} />
                             </div>
+                            <button
+                                onClick={() => copyToClipboard(currentResponse)}
+                                style={{
+                                    background: 'rgba(0,0,0,0.1)',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    marginBottom: '4px'
+                                }}
+                                title="Copy to clipboard"
+                            >
+                                📋
+                            </button>
                         </div>
                     )}
 
@@ -333,23 +421,24 @@ export const Application = () => {
             </StackItem>
             <StackItem>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <TextInput
+                    <TextArea
                         ref={inputRef}
                         value={input}
                         onChange={(_, value) => setInput(value)}
                         placeholder={_("Enter message...")}
                         autoFocus
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !isBusy) {
+                            if (e.key === 'Enter' && !e.shiftKey && !isBusy) {
+                                e.preventDefault();
                                 sendMessage();
-                            } else if (e.key === 'ArrowUp') {
+                            } else if (e.key === 'ArrowUp' && e.target.selectionStart === 0) {
                                 e.preventDefault();
                                 if (commandHistory.length > 0) {
                                     const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
                                     setHistoryIndex(newIndex);
                                     setInput(commandHistory[newIndex]);
                                 }
-                            } else if (e.key === 'ArrowDown') {
+                            } else if (e.key === 'ArrowDown' && e.target.selectionStart === input.length) {
                                 e.preventDefault();
                                 if (historyIndex >= 0) {
                                     const newIndex = historyIndex + 1;
@@ -364,7 +453,7 @@ export const Application = () => {
                             }
                         }}
                         readOnly={isBusy}
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, maxHeight: '120px', overflowY: 'auto', resize: 'none' }}
                     />
                     <Button 
                         onClick={sendMessage} 
@@ -378,5 +467,6 @@ export const Application = () => {
                 </div>
             </StackItem>
         </Stack>
+        </div>
     );
 };

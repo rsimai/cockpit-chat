@@ -77,10 +77,9 @@ Run `make check` to build and test the application.
 - **Responsive Layout**: Uses PatternFly components for consistent UI
 
 ## What's missing
-- **Human in the Loop**: interactive approvals don't work, the chat application needs to be set to always allow tool usage
-- **Shell Variables**: there should be shell variables to set parameters to applications such as goose
+- **Human in the Loop**: interactive approvals don't work, the chat application needs to be set to always allow tool usage. You should not run the MCP tools as root and ideally set a system prompt to strictly forbid destructive actions such as deletions without prompting for explicit approval.
 
 ## Requirements
 
 - `mcphost` or `goose` application must be available in the system PATH
-- The application spawns: `application parameters <conversation_history_text>`
+- The application spawns: `application parameters <conversation_history_text>` and may set ENV variables, as configured
